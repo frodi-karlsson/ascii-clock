@@ -1,8 +1,7 @@
-import os, msvcrt, time, sys, math, datetime
+import os, msvcrt, time, sys, math, datetime, numpy as np
 from typing import Dict
-import numpy as np
 from scipy.ndimage import rotate
-answer = None
+
 clear = lambda: os.system('cls')
 RED = "\u001b[31m"
 GREEN = "\u001b[32m"
@@ -10,7 +9,6 @@ BLUE = "\u001b[34m"
 WHITE = "\u001b[37m"
 RESET = "\u001b[0m"
 
-#get time in 12 hour format
 def getHour(time):
     hour = int(time.split(":")[0])
     if hour > 12:
@@ -57,10 +55,8 @@ def modEqTh(i, mod, eq, threshold):
 
 def numberMatrix(r, th = 2, diff = 4):
     radius = r - int(diff/2)
-    #create np 2d string matrix
     circle = np.zeros((radius * 2 + 1, radius * 2 + 1))
     circle = circle.astype(str)
-    #add numbers
     for y in range(radius * 2 + 1):
         for x in range(radius * 2 + 1):
             angle = getAngle(x, y, radius)
@@ -103,20 +99,7 @@ def caseMatrix(radius):
 def convertAngleToTop(angle):
     return (angle - 90 + 360) % 360
 
-def addElementInsideClock(case, element, r):
-    circle = ""
-    element = element.split("\n")
-    case = case.split("\n")
-    for y in range(len(case)):
-        for x in range(len(case[y])):
-            if y < len(element) and x < len(element[y]) and element[y][x] != " ":
-                circle += element[y][x]
-            else:
-                circle += case[y][x]
-        circle += "\n"
-    return circle
-
-def addMatrixInsideMatrix(matrix1, matrix2, padding = 2): # Elements of matrix2 replace elements of matrix1. Matrix2 has to be smaller than matrix1 and has padding of "  " at top and left. Both matrices are numpy arrays.
+def addMatrixInsideMatrix(matrix1, matrix2, padding = 2):
     matrix1 = matrix1.tolist()
     matrix2 = matrix2.tolist()
     for y in range(len(matrix2)):
@@ -188,16 +171,8 @@ def makeClockMatrix(r):
     matrix = addMatrixInsideMatrix(matrix, hourHand, 0)
     return matrix
 
-def makeMatrixSameSize(npMatrix3d): # takes in 3d numpy array and pads so that all 3 dimensions are the same size
-    maxSize = max(npMatrix3d.shape)
-    for i in range(len(npMatrix3d)):
-        npMatrix3d[i] = np.pad(npMatrix3d[i], ((0, maxSize - npMatrix3d[i].shape[0]), (0, maxSize - npMatrix3d[i].shape[1])), 'constant', constant_values=0)
-    assert npMatrix3d.shape[0] == npMatrix3d.shape[1] == npMatrix3d.shape[2]
-    return npMatrix3d
-
 def constructBackMatrix(caseMatrix):
     backMatrix = caseMatrix
-    #add "o" at the middle of the backMatrix
     centerY, centerX = backMatrix.shape[0]//2, backMatrix.shape[1]//2
     backMatrix[centerY, centerX] = "o "
     return backMatrix
@@ -223,7 +198,6 @@ def convertMatrixTo3d(matrixNp):
     for y in range(ySize):
         for x in range(xSize):
             matrix3d[centerZ, y, x] = matrixNp[y, x]
-    matrix3d = makeMatrixSameSize(matrix3d)
     return matrix3d
 
 def construct3dClock(r):
@@ -233,13 +207,11 @@ def construct3dClock(r):
     clock2d = makeClockMatrix(r)
     clock3d = convertMatrixTo3d(clock2d)
     centerZ = int(clock3d.shape[0]/2)
-    #put sideMatrix at index before centerZ and backMatrix before sideMatrix
     clock3d[centerZ + 1] = sideMatrix
     clock3d[centerZ + 2] = backMatrix
-    #add two padding rows to the top
     return clock3d
 
-def convertNp3dStrToInt(np3d): #converts strings to unicode ints. For example "ab" becomes 970098
+def convertNp3dStrToInt(np3d):
     for z in range(np3d.shape[0]):
         for y in range(np3d.shape[1]):
             for x in range(np3d.shape[2]):
@@ -253,7 +225,7 @@ def convertNp3dStrToInt(np3d): #converts strings to unicode ints. For example "a
     np3d = np3d.astype(int)
     return np3d
 
-def convertNp3dIntToStr(np3d): #converts numpy 3d array of unicode ints to strings. For example 970098 becomes "ab"
+def convertNp3dIntToStr(np3d):
     newNp3d = np.zeros((np3d.shape[0], np3d.shape[1], np3d.shape[2]))
     newNp3d = newNp3d.astype(str)
     for z in range(np3d.shape[0]):
@@ -269,7 +241,7 @@ def convertNp3dIntToStr(np3d): #converts numpy 3d array of unicode ints to strin
     return newNp3d
     
 
-def rotate3dMatrixAroundY(matrix3d, angle, ax = 2): # rotates matrix around y axis using ndimage.rotate
+def rotate3dMatrix(matrix3d, angle, ax = 2):
     matrix3d = convertNp3dStrToInt(matrix3d)
     matrix3d = rotate(matrix3d, angle, axes=(0, ax), reshape=False, order=0)
     usedNumbers = []
@@ -284,7 +256,7 @@ def rotate3dMatrixAroundY(matrix3d, angle, ax = 2): # rotates matrix around y ax
                             matrix3d[z, y, x] = ". "
     return matrix3d
 
-def project3dMatrix(matrix3d): #projects matrix3d onto a 2d matrix
+def project3dMatrix(matrix3d):
     matrix2d = np.zeros((matrix3d.shape[0], matrix3d.shape[2]))
     matrix2d = matrix2d.astype(str)
     for x in range(matrix3d.shape[2]):
@@ -313,73 +285,13 @@ def printNp3d(matrix):
             print()
         print("- "*len(matrix[z][0]))        
 
-def testAddNumbersToCase():
-    r = 10
-    case = caseMatrix(r)
-    numbers = numberMatrix(r)
-    case = addMatrixInsideMatrix(case, numbers)
-    printNp2d(case)
-
-def testNumberMatrix():
-    r = 10
-    matrix = numberMatrix(r)
-    printNp2d(matrix)
-
-def testMakeClockMatrix():
-    r = 10
-    matrix = makeClockMatrix(r)
-    printNp2d(matrix)
-
-def testConvertNp3dStrToInt():
-    r = 10
-    matrix = makeClockMatrix(r)
-    matrix = convertMatrixTo3d(matrix)
-    matrix = convertNp3dStrToInt(matrix)
-    printNp3d(matrix)
-
-def testConvertNp3dIntToStr():
-    r = 10
-    matrix = makeClockMatrix(r)
-    matrix = convertMatrixTo3d(matrix)
-    matrix = convertNp3dStrToInt(matrix)
-    matrix = convertNp3dIntToStr(matrix)
-    printNp3d(matrix)
-
-def testConvertMatrixTo3d():
-    r = 10
-    matrix = makeClockMatrix(r)
-    matrix3d = convertMatrixTo3d(matrix)
-    printNp3d(matrix3d)
-
-def testRotate3dMatrixAroundY():
-    r = 10
-    matrix = makeClockMatrix(r)
-    matrix3d = convertMatrixTo3d(matrix)
-    matrix3d = rotate3dMatrixAroundY(matrix3d, 45)
-    printNp3d(matrix3d)
-
-def testProject3dMatrix():
-    r = 10
-    matrix = makeClockMatrix(r)
-    matrix3d = convertMatrixTo3d(matrix)
-    matrix3d = rotate3dMatrixAroundY(matrix3d, 45)
-    matrix3d = project3dMatrix(matrix3d)
-    printNp2d(matrix3d)
-
-def testConstruct3dClock():
-    r = 10
-    clock3d = construct3dClock(r)
-    clock2d = project3dMatrix(clock3d)
-    printNp2d(clock2d)
-
 def runSpinAnimation():
     r = 14
     clock3d = construct3dClock(r)
-    clock3d = rotate3dMatrixAroundY(clock3d, 45)
     clock2d = project3dMatrix(clock3d)
     viewClock = clock3d
     stop = False
-    angle = 0
+    angleY = 0
     lastTime = datetime.datetime.now().strftime("%H:%M:%S")
     while not stop:
         clock3d = construct3dClock(r)
@@ -387,23 +299,15 @@ def runSpinAnimation():
         if input == "q":
             stop = True
         elif input == "d":
-            angle += 10
+            angleY += 10
         elif input == "a":
-            angle -= 10
-        viewClock = rotate3dMatrixAroundY(clock3d, angle)
+            angleY -= 10
+        if angleY%360 != 0:
+            viewClock = rotate3dMatrix(clock3d, angleY)
         clock2d = project3dMatrix(viewClock)
         clear()
         printNp2d(clock2d)
         print(lastTime)
         lastTime = datetime.datetime.now().strftime("%H:%M:%S")
 
-        #sleep for 0.1 seconds
-
-#testConvertMatrixTo3d()
-#testConvertNp3dStrToInt()
-#testConvertNp3dIntToStr()
-#testRotate3dMatrixAroundY()
-#testProject3dMatrix()
-#testConstruct3dClock()
 runSpinAnimation()
-   
